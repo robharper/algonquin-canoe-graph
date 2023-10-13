@@ -1,0 +1,18 @@
+{
+  "name": "osm_fetch",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "fetch": "node osm-fetch.js",
+    "build-tiles": "node geojson-to-mbtiles.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "geojson-area": "0.2.1",
+    "geojson-length": "0.1.1",
+    "osmtogeojson": "3.0.0-beta.5",
+    "js-fire": "1.0.0"
+  }
+}

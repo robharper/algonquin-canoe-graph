@@ -1,7 +1,11 @@
+/**
+ * Fetches data from OSM and converts it to geojson
+ */
+const fire = require('js-fire');
 const fs = require('fs');
 const osmtogeojson = require('osmtogeojson');
-const util = require('node:util');
-const exec = util.promisify(require('node:child_process').exec);
+const geojsonArea = require('geojson-area');
+const geojsonLength = require('geojson-length');
 
 const URL = "http://overpass-api.de/api/interpreter"
 
@@ -58,12 +62,14 @@ async function request(q) {
   return await response.json();
 }
 
-async function execute() {
+async function execute(force = false) {
+  // Fetch data from OSM, convert to geojson, and save to file
+
   await Promise.all(LAYERS.map(async (layer) => {
-    // Skip if file exists
-    const osmFile = `./geojson/${layer.name}.osm.json`;
+    const osmFile = `./data/osm/${layer.name}.osm.json`;
     let osmData;
-    if (!fs.existsSync(osmFile)) {
+    // Skip if file exists
+    if (force || !fs.existsSync(osmFile)) {
       console.log(`Requesting ${layer.name}...`);
       osmData = await request(layer.query);
       // Write data to file
@@ -75,29 +81,23 @@ async function execute() {
 
     // Convert osm to geojson, only if the file doesn't exist
     console.log(`Converting osm to geojson for ${layer.name}...`);
-    const geojsonFile = `./geojson/${layer.name}.geo.json`;
+    const geojsonFile = `./data/geojson/${layer.name}.geo.json`;
     const geojson = osmtogeojson(osmData);
+
+    // Add area and length properties
+    geojson.features.forEach(feature => {
+      feature.properties['featureGroup'] = layer;
+      if (feature.geometry.type == 'Polygon' || feature.geometry.type == 'MultiPolygon') {
+        const area = geojsonArea.geometry(feature.geometry);
+        feature.properties['area'] = area;
+      } else if (feature.geometry.type == 'LineString' || feature.geometry.type == 'MultiLineString') {
+        const length = geojsonLength(feature.geometry);
+        feature.properties['length'] = length;
+      }
+    });
 
     fs.writeFileSync(geojsonFile, JSON.stringify(geojson));
   }));
-
-  // Build mbtiles
-  // List all .geo.json files in geojson directory
-  const geojsonFiles = fs.readdirSync('./geojson').filter(file => file.endsWith('.geo.json'));
-  await Promise.all(geojsonFiles.map(async (file) => {
-    console.log(`Building mbtiles for ${file}...`);
-    // Name
-    const layerName = file.split('.')[0];
-    // Call tippecanoe subprocess
-    const { stderr } = await exec(`tippecanoe -L${layerName}:${'./geojson/'+file} --force --projection=EPSG:4326 -Z8 -z14 -o./mbtiles/${layerName}.mbtiles`);
-    console.log(stderr);
-  }));
-
-  // Merge all layers into one mbtiles
-  console.log('Combining...')
-  const layerList = geojsonFiles.map(file => `./mbtiles/${file.split('.')[0]}.mbtiles`).join(' ');
-  const { stderr } = await exec(`tile-join -oalgonquin.mbtiles --force -pk -n algonquin ${layerList}`);
-  console.log(stderr);
 }
 
-execute();
+fire(execute);
