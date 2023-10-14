@@ -4,8 +4,7 @@
 const fire = require('js-fire');
 const fs = require('fs');
 const osmtogeojson = require('osmtogeojson');
-const geojsonArea = require('geojson-area');
-const geojsonLength = require('geojson-length');
+const turf = require('@turf/turf');
 
 const URL = "http://overpass-api.de/api/interpreter"
 
@@ -88,10 +87,10 @@ async function execute(force = false) {
     geojson.features.forEach(feature => {
       feature.properties['featureGroup'] = layer;
       if (feature.geometry.type == 'Polygon' || feature.geometry.type == 'MultiPolygon') {
-        const area = geojsonArea.geometry(feature.geometry);
+        const area = turf.area(feature.geometry);
         feature.properties['area'] = area;
       } else if (feature.geometry.type == 'LineString' || feature.geometry.type == 'MultiLineString') {
-        const length = geojsonLength(feature.geometry);
+        const length = turf.length(feature.geometry);
         feature.properties['length'] = length;
       }
     });
