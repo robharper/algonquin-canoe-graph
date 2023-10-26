@@ -1,10 +1,10 @@
 /**
  * Fetches data from OSM and converts it to geojson
  */
-const fire = require('js-fire');
-const fs = require('fs');
-const osmtogeojson = require('osmtogeojson');
-const turf = require('@turf/turf');
+import fs from 'fs';
+import osmtogeojson from 'osmtogeojson';
+import * as turf from '@turf/turf';
+import fetch from 'node-fetch';
 
 const URL = "http://overpass-api.de/api/interpreter"
 
@@ -32,39 +32,50 @@ const QUERY_LAKES = `
     nwr[natural=water](area.searchArea);
     );
     `
+const QUERY_ACCESS_POINTS = `
+    area(id:3600910784)->.searchArea;
+    (
+    nwr[canoe=put_in][leisure=slipway](area.searchArea);
+    );
+    `
 
 const LAYERS = [
-    {
-        query: QUERY_PORTAGES,
-        name: "portages"
-    },
-    {
-        query: QUERY_RIVERS,
-        name: "rivers"
-    },
-    {
-        query: QUERY_CAMPSITES,
-        name: "campsites"
-    },
-    {
-        query: QUERY_LAKES,
-        name: "lakes"
-    }
+  {
+    query: QUERY_PORTAGES,
+    name: "portage"
+  },
+  {
+    query: QUERY_RIVERS,
+    name: "river"
+  },
+  {
+    query: QUERY_CAMPSITES,
+    name: "campsite"
+  },
+  {
+    query: QUERY_LAKES,
+    name: "lake"
+  },
+  {
+    query: QUERY_ACCESS_POINTS,
+    name: "access_point"
+  }
 ]
 
 
 async function request(q) {
   const query_str = `[out:json]; ${q} out geom;`
   const response = await fetch(URL, {
-    data: query_str,
+    method: 'POST',
+    body: query_str,
   });
   return await response.json();
 }
 
-async function execute(force = false) {
+export async function fetchGeoJson(force = false) {
   // Fetch data from OSM, convert to geojson, and save to file
 
-  await Promise.all(LAYERS.map(async (layer) => {
+  for (const layer of LAYERS) {
     const osmFile = `./data/osm/${layer.name}.osm.json`;
     let osmData;
     // Skip if file exists
@@ -96,7 +107,5 @@ async function execute(force = false) {
     });
 
     fs.writeFileSync(geojsonFile, JSON.stringify(geojson));
-  }));
+  };
 }
-
-fire(execute);

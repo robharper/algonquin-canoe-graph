@@ -7,12 +7,15 @@
     "fetch": "node osm-fetch.js",
     "build-tiles": "node geojson-to-mbtiles.js"
   },
+  "type": "module",
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "@turf/turf": "6.5.0",
     "better-sqlite3": "^9.0.0",
     "js-fire": "1.0.0",
+    "neo4j-driver": "^5.13.0",
+    "node-fetch": "^3.3.2",
     "osmtogeojson": "3.0.0-beta.5"
   }
 }

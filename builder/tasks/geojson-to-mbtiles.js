@@ -1,13 +1,13 @@
-const fire = require('js-fire');
-const fs = require('fs');
-const util = require('node:util');
-const exec = util.promisify(require('node:child_process').exec);
+import fs from 'fs';
+import util from 'node:util';
+import { exec as e } from 'node:child_process';
+const exec = util.promisify(e);
 
 
 /**
  * This script converts all geojson files in the data/geojson directory to mbtiles
  */
-async function buildTiles() {
+export async function buildTiles() {
   // Build mbtiles
   // List all .geo.json files in geojson directory
   const geojsonFiles = fs.readdirSync('./data/geojson').filter(file => file.endsWith('.geo.json'));
@@ -26,5 +26,3 @@ async function buildTiles() {
   const { stderr } = await exec(`tile-join -o./data/mbtiles/algonquin.mbtiles --force -pk -n algonquin ${layerList}`);
   console.log(stderr);
 }
-
-fire(buildTiles);
