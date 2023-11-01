@@ -38,6 +38,13 @@ const QUERY_ACCESS_POINTS = `
     nwr[canoe=put_in][leisure=slipway](area.searchArea);
     );
     `
+const QUERY_CANOE_ROUTES = `
+    area(id:3600910784)->.searchArea;
+    (
+    nwr[route=canoe](area.searchArea);
+    );
+    (>;);
+    `
 
 const LAYERS = [
   {
@@ -59,6 +66,11 @@ const LAYERS = [
   {
     query: QUERY_ACCESS_POINTS,
     name: "access_point"
+  },
+  {
+    query: QUERY_CANOE_ROUTES,
+    name: "canoe_route",
+    only: ["LineString"]
   }
 ]
 
@@ -77,7 +89,8 @@ export async function fetchGeoJson(force = false) {
 
   for (const layer of LAYERS) {
     const osmFile = `./data/osm/${layer.name}.osm.json`;
-    let osmData;
+
+    let osmData = null;
     // Skip if file exists
     if (force || !fs.existsSync(osmFile)) {
       console.log(`Requesting ${layer.name}...`);
@@ -85,27 +98,42 @@ export async function fetchGeoJson(force = false) {
       // Write data to file
       fs.writeFileSync(osmFile, JSON.stringify(osmData));
     } else {
-      const osmJson = fs.readFileSync(osmFile);
-      osmData = JSON.parse(osmJson);
+      console.log(`Skipping fetching ${layer.name}...`);
     }
 
     // Convert osm to geojson, only if the file doesn't exist
-    console.log(`Converting osm to geojson for ${layer.name}...`);
-    const geojsonFile = `./data/geojson/${layer.name}.geo.json`;
-    const geojson = osmtogeojson(osmData);
+    if (osmData || force || !fs.existsSync(`./data/geojson/${layer.name}.geo.json`)) {
+      console.log(`Converting osm to geojson for ${layer.name}...`);
+      const geojsonFile = `./data/geojson/${layer.name}.geo.json`;
 
-    // Add area and length properties
-    geojson.features.forEach(feature => {
-      feature.properties['featureGroup'] = layer;
-      if (feature.geometry.type == 'Polygon' || feature.geometry.type == 'MultiPolygon') {
-        const area = turf.area(feature.geometry);
-        feature.properties['area'] = area;
-      } else if (feature.geometry.type == 'LineString' || feature.geometry.type == 'MultiLineString') {
-        const length = turf.length(feature.geometry);
-        feature.properties['length'] = length;
+      if (osmData == null) {
+        const osmJson = fs.readFileSync(osmFile);
+        osmData = JSON.parse(osmJson);
       }
-    });
 
-    fs.writeFileSync(geojsonFile, JSON.stringify(geojson));
+      let geojson = osmtogeojson(osmData);
+
+      // Add area and length properties
+      geojson.features.forEach(feature => {
+        feature.properties['featureGroup'] = layer;
+        if (feature.geometry.type == 'Polygon' || feature.geometry.type == 'MultiPolygon') {
+          const area = turf.area(feature.geometry);
+          feature.properties['area'] = area;
+        } else if (feature.geometry.type == 'LineString' || feature.geometry.type == 'MultiLineString') {
+          const length = turf.length(feature.geometry);
+          feature.properties['length'] = length;
+        }
+      });
+
+      if (layer.only) {
+        geojson.features = geojson.features.filter(feature => layer.only.includes(feature.geometry.type));
+      }
+
+      console.log(`Writing geojson for ${layer.name} with ${geojson.features.length} features`);
+
+      fs.writeFileSync(geojsonFile, JSON.stringify(geojson));
+    } else {
+      console.log(`Skipping converting geojson ${layer.name}...`);
+    }
   };
 }

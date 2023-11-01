@@ -79,21 +79,10 @@ function getClose(geoJsonA, geoJsonB, maxDistanceKm=0.01) {
   }
 }
 
-export function findIntersections(db, feature, exact=true) {
+export function findIntersections(feature, possibleIntersections, exact=true) {
   const featureGeoJSON = JSON.parse(feature.geojson);
 
-  // Find all intersecting geometries - add a 10m buffer (0.000125 degrees is about 10m at 45 lat)
-  const queryStmt = db.prepare(
-    `SELECT f.* FROM features AS f, features AS TARGET
-      WHERE f.maxX>=(TARGET.minX - 0.000125) AND f.minX<=(TARGET.maxX + 0.000125)
-        AND f.maxY>=(TARGET.minY - 0.000125) AND f.minY<=(TARGET.maxY + 0.000125)
-        AND TARGET.id=?;`);
-
-  const possibleIntersections = queryStmt.all(feature.id);
-
   let intersectingFeatures = possibleIntersections.map((overlap) => {
-    console.log(`Checking ${overlap.id}`);
-
     if (feature.id === overlap.id) {
       return null;
     }
