@@ -1,3 +1,4 @@
+import { point } from '@turf/turf';
 
 export function endpoints(line) {
   return {

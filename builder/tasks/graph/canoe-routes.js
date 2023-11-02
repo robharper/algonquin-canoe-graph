@@ -9,7 +9,7 @@ async function processFeature(node, db, session) {
   const nodeGeoJSON = JSON.parse(node.geojson);
 
   // Insert node into graph
-  await createNode(session, node, nodeGeoJSON.properties?.canoe === 'portage' ? 'portage' : 'route');
+  await createNode(session, node, nodeGeoJSON, nodeGeoJSON.properties?.canoe === 'portage' ? 'portage' : 'route');
 
   // Find all intersecting canoe routes to build the graph
   const queryStmt = db.prepare(DB_FIND_OVERLAPS_BY_TYPE);
@@ -21,7 +21,7 @@ async function processFeature(node, db, session) {
     for (const {feature, intersection} of intersections) {
       const intersectionGeoJson = JSON.parse(feature.geojson);
 
-      await createNode(session, feature, intersectionGeoJson.properties?.canoe === 'portage' ? 'portage' : 'route');
+      await createNode(session, feature, intersectionGeoJson, intersectionGeoJson.properties?.canoe === 'portage' ? 'portage' : 'route');
       await createIntersectionLink({session, point: intersection, start: node, end: feature});
     }
   } else {

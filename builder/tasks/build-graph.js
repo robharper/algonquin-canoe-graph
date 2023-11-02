@@ -6,17 +6,21 @@ import { graphAllFeatures } from './graph/all-features.js';
 
 const URI = 'bolt://localhost:7687';
 const USER = 'neo4j';
-const PASSWORD = 'abcd1234';
 
 const SQLITEDB = './data/features.db';
 
 
-export async function buildGraph(allFeatures=false) {
+export async function buildGraph(allFeatures=false, password=process.env['NEO4J_PASSWORD']) {
+  if (password == null) {
+    console.error('No password for Neo4J provided');
+    process.exit(-1);
+  }
+
   const db = Database(SQLITEDB);
 
   let driver;
   try {
-    driver = graphDb.driver(URI, graphDb.auth.basic(USER, PASSWORD));
+    driver = graphDb.driver(URI, graphDb.auth.basic(USER, password));
     const serverInfo = await driver.getServerInfo();
     console.log('Connection established');
     console.log(serverInfo);

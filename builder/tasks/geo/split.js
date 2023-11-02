@@ -13,10 +13,18 @@ export function lineMultiSplit(line, splitArray) {
       // Split the line
       const splitLine = results[lineIndex];
       const splitResult = lineSplit(splitLine, splitPoint);
-      // assert.equal(splitResult.features.length, 2);
-      if (splitResult.features.length !== 2) {
-        console.log(`Splitting ${splitLine.id} at ${splitPoint.geometry.coordinates} resulted in ${splitResult.features.length} features`);
-      }
+
+      assert.equal(splitResult.features.length, 2);
+
+      // Ensure the geojson properties are copied over
+      splitResult.features.forEach((feature) => {
+        feature.properties = splitLine.properties;
+      });
+
+      // if (splitResult.features.length !== 2) {
+      //   console.log(`Splitting ${splitLine.id} at ${splitPoint.geometry.coordinates} resulted in ${splitResult.features.length} features`);
+      // }
+
       results.splice(lineIndex, 1, splitResult.features[0], splitResult.features[1]);
     }
   }

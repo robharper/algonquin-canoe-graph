@@ -1,10 +1,14 @@
 import Database from 'better-sqlite3';
-import { booleanEqual, point, bbox } from '@turf/turf';
+import { booleanEqual, point, length } from '@turf/turf';
 import { findIntersections } from './geo/intersection.js';
 import { lineMultiSplit } from './geo/split.js';
 import { insertFeature } from './lib/db-queries.js';
-import { ALL_OF_TYPE, DB_FIND_OVERLAPS_BY_TYPE, INSERT_STMT } from './lib/queries.js';
+import { ALL_OF_TYPE, DB_FIND_OVERLAPS_BY_TYPE, UPDATE_GEOJSON } from './lib/queries.js';
+import { endpoints } from './geo/endpoints.js';
 
+/**
+ * No longer used
+ */
 function namePortages(db) {
   const allPortages = db.prepare(ALL_OF_TYPE);
   const updatePortage = db.prepare(`UPDATE features SET name=? WHERE id=?`);
@@ -68,16 +72,30 @@ function divideRouteIntersections(db) {
       // Remove the original, add the new routes
       deleteStmt.run(route.id);
       newRoutes.forEach((r, idx) => {
-        insertFeature(db, r, route.id * 1000 + idx);
+        insertFeature(db, r, route.featureType, route.id * 1000 + idx);
       });
     }
   }
 }
 
-export function enrichDB() {
+function addLengths(db) {
+  const allRoutesQuery = db.prepare(ALL_OF_TYPE);
+  const updateQuery = db.prepare(UPDATE_GEOJSON);
+
+  for (const route of allRoutesQuery.all('canoe_route')) {
+    const geojson = JSON.parse(route.geojson);
+    if (geojson.geometry.type === 'LineString') {
+      geojson.properties['length'] = length(geojson.geometry, {units: "meters"});
+      console.log(`Updating ${route.id} with length ${geojson.properties['length']}`);
+      updateQuery.run(JSON.stringify(geojson), route.id);
+    }
+  }
+}
+
+export function prepareDB() {
   const db = Database('./data/features.db');
 
-  // namePortages(db);
-
   divideRouteIntersections(db);
+
+  addLengths(db);
 }

@@ -119,9 +119,6 @@ export async function fetchGeoJson(force = false) {
         if (feature.geometry.type == 'Polygon' || feature.geometry.type == 'MultiPolygon') {
           const area = turf.area(feature.geometry);
           feature.properties['area'] = area;
-        } else if (feature.geometry.type == 'LineString' || feature.geometry.type == 'MultiLineString') {
-          const length = turf.length(feature.geometry);
-          feature.properties['length'] = length;
         }
       });
 

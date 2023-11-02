@@ -1,7 +1,7 @@
 import { bbox, length } from '@turf/turf';
 import { INSERT_STMT } from './queries.js';
 
-export function insertFeature(db, geojson, id=null) {
+export function insertFeature(db, geojson, featureType, id=null) {
   const insertStmt = db.prepare(INSERT_STMT);
 
   const dbId = id ?? geojson.id.split('/')[1];

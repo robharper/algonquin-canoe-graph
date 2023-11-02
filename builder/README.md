@@ -80,13 +80,71 @@ out geom;
 
 This grabs the relation and then returns the sub nodes, ways, and relations.
 
-The results are enriched by adding length in Km to each way, converting to GeoJson and writing to disk.
+The results are converted to GeoJson, lake areas are calculated (more on this later), and written to disk.
 
 Run via:
 ```
 node index.js fetchGeoJson
 ```
 
+This generates files in `./data/osm` and `./data/geojson` directories.
+
 ### Build DB
 
-TODO
+The next stage puts all features into a geo-indexed DB table used to find feature intersections later.
+
+The following command builds the Sqlite DB, populating only with canoe routes and lakes in preparation for later steps.
+```
+node index.js buildDB --types=canoe_route,lake
+```
+
+This stage can also augment data as it comes in, e.g. adding names to things by id if desired. Create a JSON file of id keys to properties objects in `./data/enrichments/additional_data.json` if desired.
+
+This step builds a sqlite db at `./data/features.db`
+
+### Prepare DB
+
+The third stage prepares the data in the DB for graph creation. Many of the portages and canoe routes intersect with other routes midway through their path. This means that if one were to graph a route it would be possible that only a part of a route segment would need to be traversed before moving onto the next segment in the route. We want to avoid this such that each route segment is always traversed start to end, creating a true path graph.
+
+This stage iterates over all route segments in the DB, finds all intersections, and if there are intersections midway through a segment it divides the segment up into smaller pieces.
+
+After breaking up all segments, this stage iterates through all segments again and adds their length in metres to the GeoJSON objects. We'll use these lengths when creating our graph in the next step.
+
+```
+node index.js prepareDB
+```
+
+This stage reads and updates `./data/features.db`
+
+### Build Graph
+
+The final stage in the data pipeline is generating the Neo4J graph database of the final result. To do this we iterate over all route segments in the DB and find segments that intersect them. We add each segment to the graph using `:Path:Route` node type for in-water routes, `:Path:Portage` for portages. For each intersection we link the segments using a `:CONNECTED_TO` link. For in-water routes we find the lakes or rivers that contain them (added as nodes of type `:Feature:Lake` or `:Feature:River`) and link the containing water using a `:CONTAINS` link in the graph.
+
+For this stage, Neo4J must be running and a password must be set:
+```
+export NEO4J_PASSWORD=abcd1234
+
+# Start Neo4J in docker
+./start-neo4j.sh
+
+# Build the graph
+node index.js buildGraph
+```
+
+Once the graph is populated, you can start finding routes!
+
+## Using the graph
+### Find the shortest route between two lakes
+```
+match p=shortestpath(
+  (:Lake {name:"Kioshkokwi Lake"})-[*1..10]-(:Lake {name:"Manitou Lake"})
+)
+return p,
+reduce(total=0, number in [ n IN nodes(p) where n:Portage | n.length] | total + number) as portage,
+reduce(total=0, number in [ n IN nodes(p) where n:Route | n.length] | total + number) as paddle;
+```
+
+![Graph of Kiosk to Manitou](_assets/graph-kiosk-to-manitou.png)
+
+- Paddling Distance: 3,068m
+- Portage Distance: 2,314m

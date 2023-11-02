@@ -62,7 +62,13 @@ export function buildDB(types=null) {
   createStmt.run();
 
   // Fetch augmentation data
-  const augment = JSON.parse(fs.readFileSync('./data/enrichments/additional_data.json'));
+  let augment;
+  // Read file if it exists
+  if (fs.existsSync('./data/enrichments/additional_data.json')) {
+    augment = JSON.parse(fs.readFileSync('./data/enrichments/additional_data.json'));
+  } else {
+    augment = {};
+  }
 
   // Add all data
   const geojsonFiles = fs.readdirSync('./data/geojson').filter(file => file.endsWith('.geo.json'));
