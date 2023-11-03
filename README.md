@@ -1,4 +1,4 @@
-# Algonqiun Provincial Park Canoe Route Graph Dataset
+# Algonquin Provincial Park Canoe Route Graph Dataset
 
 This repo contains scripts to create a graph dataset of Algonquin Park canoe routes, portages, and the lakes they traverse. The goal of the connectivity graph is to allow route-finding algorithms to plot one or more paths between points in Algonquin park.
 
