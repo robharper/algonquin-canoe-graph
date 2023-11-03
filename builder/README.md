@@ -1,21 +1,17 @@
-# Canoe Route Dataset Builder
+# Algonqion Canoe Route Graph Dataset
 
-This folder contains the source files for creating an Algonquin canoe routes dataset. The primary outputs of the dataset are:
-1. A connectivity graph of canoe routes, portages, and the lakes they traverse
-2. GeoJSON and .mbtiles data for rendering the above data in the browser
-
-The goal of the connectivity graph is to allow down-stream route-finding algorithms to plot one or more paths between points in Algonquin park, traversed by canoe.
+This repo contains scripts to create a graph dataset of Algonquin Park canoe routes, portages, and the lakes they traverse. The goal of the connectivity graph is to allow route-finding algorithms to plot one or more paths between points in Algonquin park.
 
 For example, if starting at the Kioshkokwi Lake Access Point, how does one navigate Manitou Lake?
 
 ![Image of the route from kiosk to manitou](_assets/kiosk-to-manitou.png)
 
 The human-derived description would be something like:
-1. Depart the Kioshkokwi access point, heading south-west
-2. Paddle 6km
+1. Depart the Kioshkokwi access point
+2. Paddle south-west, 6km
 3. Take the 265m portage + 310m portage to the next section of the Amable du Fond River
-5. Paddle west 2km
-6. Take the 1355m portage to Manitou Lake
+4. Paddle west, 2km
+5. Take the 1355m portage to Manitou Lake
 
 However to create a computer-generated navigation route, the followin graph traversal is equivalent to the above:
 1. Start: node/8720251656 (Kioshkokwi Access Point)
@@ -30,7 +26,7 @@ However to create a computer-generated navigation route, the followin graph trav
 10. way/106580107 (portage)
 11. End: way/1218622829 (Manitou Lake)
 
-The goal of the code in this directory is to build the graph of `nodes` and `ways` from Open Street Map (OSM) data.
+The code in this repo builds this graph of `nodes` and `ways` using Open Street Map (OSM) data.
 
 ## Approach
 
@@ -135,6 +131,7 @@ Once the graph is populated, you can start finding routes!
 
 ## Using the graph
 ### Find the shortest route between two lakes
+Using `Cypher` we can request the shortest route along with the total paddling and portaging distance:
 ```
 match p=shortestpath(
   (:Lake {name:"Kioshkokwi Lake"})-[*1..10]-(:Lake {name:"Manitou Lake"})
@@ -148,3 +145,21 @@ reduce(total=0, number in [ n IN nodes(p) where n:Route | n.length] | total + nu
 
 - Paddling Distance: 3,068m
 - Portage Distance: 2,314m
+
+## Rendering Routes
+In addition to querying the graph, we can render the routes in the graph using vector web maps. By first dumping the geojson from Sqlite and running the results through [tippecanoe](https://github.com/mapbox/tippecanoe) we create mbtiles databases. The `maptiler/tileserver-gl` Docker container can be used to quickly visualize the results and serve the vector tiles for use in other applications using [MapBox GL](https://docs.mapbox.com/mapbox-gl-js/api/) or [MapLibre](https://maplibre.org/).
+
+Build one layer (e.g. portages)
+```
+tippecanoe -L${layerName}:${filename} --force --projection=EPSG:4326 -Z8 -z14 -o./data/mbtiles/${layerName}.mbtiles
+```
+
+Combine layers into a single mbtiles dataset:
+```
+tile-join -o./data/mbtiles/algonquin.mbtiles --force -pk -n algonquin ./data/mbtiles/${layer1}.mbiles ./data/mbtiles/${layer2}.mbiles ...
+```
+
+Run the tileserver:
+```
+docker run --rm -it -v $(pwd)/data/mbtiles:/data -p 8080:8080 maptiler/tileserver-gl --mbtiles=./data/mbtiles/algonquin.mbtiles
+```
