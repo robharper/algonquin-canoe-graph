@@ -129,6 +129,16 @@ node index.js buildGraph
 
 Once the graph is populated, you can start finding routes!
 
+### Putting it all together
+To build the graph from scratch, run:
+```
+node index.js fetchGeoJson --force=true
+node index.js buildDB --types=canoe_route,lake,access_point
+node index.js prepareDB
+# Run Neo4J before here, see above
+node index.js buildGraph
+```
+
 ## Using the graph
 ### Find the shortest route between two lakes
 Using `Cypher` we can request the shortest route along with the total paddling and portaging distance:
