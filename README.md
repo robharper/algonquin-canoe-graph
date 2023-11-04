@@ -13,7 +13,7 @@ The human-derived description would be something like:
 4. Paddle west, 2km
 5. Take the 1355m portage to Manitou Lake
 
-However to create a computer-generated navigation route, the followin graph traversal is equivalent to the above:
+However to create a computer-generated navigation route, the following graph traversal is equivalent to the above:
 1. Start: node/8720251656 (Kioshkokwi Access Point)
 2. way/1218622840
 3. way/1218622841
@@ -155,6 +155,23 @@ reduce(total=0, number in [ n IN nodes(p) where n:Route | n.length] | total + nu
 
 - Paddling Distance: 3,068m
 - Portage Distance: 2,314m
+
+### Finding a longer path
+Or here's a longer paddle that includes expanding in-transit lakes for better visibility of the route:
+```
+match p=shortestpath(
+  (:Lake {name:"Maple Lake"})-[*1..20]-(:Lake {name:"Manitou Lake"})
+)
+return p,
+reduce(total=0, number in [ n IN nodes(p) where n:Portage | n.length] | total + number) as portage,
+reduce(total=0, number in [ n IN nodes(p) where n:Route | n.length] | total + number) as paddle;
+```
+
+![Manitou to Maple](_assets/graph-manitou-to-maple.png)
+
+- Paddle: 9030m
+- Portage: 5776m
+
 
 ## Rendering Routes
 In addition to querying the graph, we can render the routes in the graph using vector web maps. By first dumping the geojson from Sqlite and running the results through [tippecanoe](https://github.com/mapbox/tippecanoe) we create mbtiles databases. The `maptiler/tileserver-gl` Docker container can be used to quickly visualize the results and serve the vector tiles for use in other applications using [MapBox GL](https://docs.mapbox.com/mapbox-gl-js/api/) or [MapLibre](https://maplibre.org/).
